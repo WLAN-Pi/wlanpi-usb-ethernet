@@ -1,0 +1,9 @@
+Package: wlanpi-usb-ethernet
+Version: 1.0.0
+Architecture: all
+Maintainer: Jerry Olla <jerryolla@gmail.com>
+Description: Configure USB Ethernet Gadget for WLAN Pi
+ This package sets up a USB Ethernet gadget on a Raspberry Pi,
+ including DHCP server functionality, static IP configuration,
+ and systemd-networkd setup.
+Depends: systemd (>= 240)

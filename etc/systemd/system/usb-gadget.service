@@ -1,0 +1,11 @@
+[Unit]
+Description=USB Gadget Setup
+Before=systemd-networkd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/usb_otg_setup.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

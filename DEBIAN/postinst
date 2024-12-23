@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+
+CONFIG_FILE="/boot/firmware/config.txt"
+TEMP_FILE="/tmp/config.txt"
+
+# Comment out any existing otg_mode=1 entries
+sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
+
+# Process config.txt to ensure dtoverlay=dwc2 is in the [cm4] section
+awk '
+/^\[cm4\]/ {
+    print;
+    in_cm4 = 1;
+    next;
+}
+/^\[/ && in_cm4 {
+    in_cm4 = 0;
+    if (!found) print "dtoverlay=dwc2";
+}
+in_cm4 {
+    if ($0 ~ /dtoverlay=dwc2/) found = 1;
+    print;
+    next;
+}
+{ print }
+END {
+    if (in_cm4 && !found) print "dtoverlay=dwc2";
+}' "$CONFIG_FILE" > "$TEMP_FILE"
+
+mv "$TEMP_FILE" "$CONFIG_FILE"
+
+# Detect if running in a chroot environment
+if systemd-detect-virt --chroot >/dev/null 2>&1; then
+    echo "Running in a chroot environment. Only enabling services."
+    # Enable services without starting them
+    systemctl enable systemd-networkd || true
+    systemctl enable usb-gadget.service || true
+else
+    # Enable and start services in a normal environment
+    systemctl enable systemd-networkd
+    systemctl start systemd-networkd
+
+    systemctl enable usb-gadget.service
+    systemctl start usb-gadget.service
+
+    # Reload systemd services
+    systemctl daemon-reload
+fi
