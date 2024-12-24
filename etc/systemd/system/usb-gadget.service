@@ -4,7 +4,7 @@ Before=systemd-networkd.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/usb_otg_setup.sh
+ExecStart=/usr/bin/usb_otg_setup.sh
 RemainAfterExit=yes
 
 [Install]

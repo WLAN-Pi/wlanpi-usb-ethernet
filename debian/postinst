@@ -3,6 +3,7 @@ set -e
 
 CONFIG_FILE="/boot/firmware/config.txt"
 TEMP_FILE="/tmp/config.txt"
+SERVICE_FILE="/etc/systemd/system/usb-gadget.service"  # Corrected path
 
 # Comment out any existing otg_mode=1 entries
 sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
@@ -30,20 +31,30 @@ END {
 
 mv "$TEMP_FILE" "$CONFIG_FILE"
 
+# Reload systemd configuration
+systemctl daemon-reload
+
 # Detect if running in a chroot environment
 if systemd-detect-virt --chroot >/dev/null 2>&1; then
     echo "Running in a chroot environment. Only enabling services."
     # Enable services without starting them
     systemctl enable systemd-networkd || true
-    systemctl enable usb-gadget.service || true
+    if [ -f "$SERVICE_FILE" ]; then
+        systemctl enable usb-gadget.service || true
+    else
+        echo "Error: usb-gadget.service not found at $SERVICE_FILE" >&2
+    fi
 else
     # Enable and start services in a normal environment
     systemctl enable systemd-networkd
     systemctl start systemd-networkd
 
-    systemctl enable usb-gadget.service
-    systemctl start usb-gadget.service
-
-    # Reload systemd services
-    systemctl daemon-reload
+    if [ -f "$SERVICE_FILE" ]; then
+        systemctl enable usb-gadget.service
+        systemctl start usb-gadget.service
+    else
+        echo "Error: usb-gadget.service not found at $SERVICE_FILE" >&2
+        exit 1
+    fi
 fi
+

@@ -2,14 +2,11 @@ Source: wlanpi-usb-ethernet
 Section: utils
 Priority: optional
 Maintainer: Jerry Olla <jerryolla@gmail.com>
+Standards-Version: 4.6.0
 Build-Depends: debhelper-compat (= 13)
-Standards-Version: 4.6.2
-Homepage: https://github.com/WLAN-Pi/wlanpi-usb-ethernet
-Rules-Requires-Root: no
 
 Package: wlanpi-usb-ethernet
 Architecture: all
-Depends: ${misc:Depends}, systemd (>= 252)
-Description: WLAN Pi USB Ethernet Gadget
- This package configures the Raspberry Pi as a USB Ethernet gadget.
- It supports RNDIS for Windows, ECM for macOS/Linux, and systemd-networkd for interface management.
+Depends: ${misc:Depends}
+Description: Configure Raspberry Pi USB gadget functionality
+ This package sets up USB Ethernet gadget mode for WLAN Pi.
