@@ -49,8 +49,9 @@ jobs:
       # Build the package
       - name: Build Debian package
         run: |
+          dpkg-buildpackage -us -uc -b -d
           mkdir -p build
-          dpkg-buildpackage -us -uc -b -d -o build
+          mv ../*.deb build/
 
       # Upload artifact
       - name: Upload Debian package
