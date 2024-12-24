@@ -37,7 +37,7 @@ jobs:
 
           # Increment the version (minor bump for now)
           NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{printf "%d.%d.%d", $1, $2 + 1, 0}')
-          
+
           # Update the changelog with the new version
           export DEBFULLNAME="GitHub Actions"
           export DEBEMAIL="actions@github.com"
@@ -49,11 +49,12 @@ jobs:
       # Build the package
       - name: Build Debian package
         run: |
-          dpkg-buildpackage -us -uc
+          mkdir -p build
+          dpkg-buildpackage -us -uc -b -d -o build
 
       # Upload artifact
       - name: Upload Debian package
         uses: actions/upload-artifact@v3
         with:
           name: wlanpi-usb-ethernet_${{ env.new_version }}
-          path: ../*.deb
+          path: build/*.deb
