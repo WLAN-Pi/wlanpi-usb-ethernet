@@ -1,3 +1,6 @@
+wlanpi-usb-ethernet (1.1.1-1) bookworm; urgency=medium
+  * Added support for Windows
+
 wlanpi-usb-ethernet (1.0.0-1) bookworm; urgency=medium
 
   * Initial release of WLAN Pi USB Ethernet Gadget.
