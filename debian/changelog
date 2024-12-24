@@ -1,5 +1,5 @@
-wlanpi-usb-ethernet (1.0.0-1) unstable; urgency=medium
+wlanpi-usb-ethernet (1.0.0-1) bookworm; urgency=medium
 
-  * Initial release.
+  * Initial release of WLAN Pi USB Ethernet Gadget.
 
- -- Jerry Olla <jerryolla@gmail.com> Fri, 22 Dec 2023 10:00:00 +0000
+ -- Jerry Olla <jerryolla@gmail.com>  Fri, 22 Dec 2023 10:00:00 +0000
