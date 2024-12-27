@@ -1,4 +1,5 @@
 etc/systemd/network/usb0.network etc/systemd/network/
+etc/systemd/network/usb1.network etc/systemd/network/
 etc/systemd/system/usb-gadget.service etc/systemd/system/
 usr/bin/usb_otg_setup.sh usr/bin/
 

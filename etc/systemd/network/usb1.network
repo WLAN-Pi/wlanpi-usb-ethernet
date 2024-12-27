@@ -1,5 +1,5 @@
 [Match]
-Name=usb0
+Name=usb1
 
 [Address]
 Address=10.42.0.1/24
