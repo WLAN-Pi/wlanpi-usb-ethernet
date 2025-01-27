@@ -7,6 +7,12 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build from"
+        required: false
+        default: "main"
 
 jobs:
   build-deb:
@@ -17,6 +23,10 @@ jobs:
       # 1) Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          # If this workflow is triggered manually, checkout the 'branch' input;
+          # otherwise, checkout the ref of the push or pull_request event.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref }}
 
       # 2) Set up dependencies
       - name: Install required packages
