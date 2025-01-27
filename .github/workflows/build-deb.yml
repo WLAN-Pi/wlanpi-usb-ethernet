@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to build from"
+        description: 'Branch to build from'
         required: false
-        default: "main"
+        default: 'main'
 
 jobs:
   build-deb:
@@ -24,23 +24,23 @@ jobs:
       - name: Determine branch name
         id: branch
         run: |
-          # For manual runs (workflow_dispatch), use the provided input
+          # If triggered manually, use the input.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            BRANCH_NAME="${{ github.event.inputs.branch }}"
-          # For pull_request events, github.head_ref is the source branch (not "refs/...")
+            RAW_BRANCH="${{ github.event.inputs.branch }}"
+          # If triggered by a pull_request, use github.head_ref.
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
+            RAW_BRANCH="${{ github.head_ref }}"
+          # Otherwise (push), parse the branch from GITHUB_REF.
           else
-            # For push events, parse branch name from GITHUB_REF (e.g., "refs/heads/main" -> "main")
-            BRANCH_NAME="${GITHUB_REF##*/}"
+            RAW_BRANCH="${GITHUB_REF##*/}"
           fi
 
-          # Replace slashes or any other non-alphanumeric characters in the branch name
-          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '_')
+          # Replace slashes with dashes (Debian versions cannot have '/')
+          SANITIZED_BRANCH=$(echo "$RAW_BRANCH" | tr '/' '-')
 
           echo "branch_name=$SANITIZED_BRANCH" >> "$GITHUB_ENV"
 
-      # 2) Check out repository (using either the push/PR ref or the manually specified branch)
+      # 2) Check out repository (for manual runs, checkout the specified branch).
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -56,29 +56,28 @@ jobs:
       - name: Increment version number
         id: version
         run: |
-          # Read the base version from changelog (if present) or default to 1.0.0
+          # If there's an existing changelog, parse its base version. Otherwise, start at 1.0.0
           if [ -f "debian/changelog" ]; then
             BASE_VERSION=$(dpkg-parsechangelog --show-field Version | cut -d'-' -f1)
           else
             BASE_VERSION="1.0.0"
           fi
 
-          # Split the base version into MAJOR, MINOR, (ignore PATCH)
+          # Split version into major/minor/patch (assuming X.Y.Z format)
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
 
-          # Pull in the sanitized branch name
+          # Use the sanitized branch name
           BRANCH_NAME="${{ env.branch_name }}"
 
-          # Incorporate the GitHub Actions run number and the branch name into the version
-          # e.g. 1.0.123_main
-          NEW_VERSION="${MAJOR}.${MINOR}.${GITHUB_RUN_NUMBER}_${BRANCH_NAME}"
+          # Construct a valid Debian version (replace underscore with '+')
+          # Example: "1.0.18+my-feature-branch"
+          NEW_VERSION="${MAJOR}.${MINOR}.${GITHUB_RUN_NUMBER}+${BRANCH_NAME}"
 
-          # Update the changelog with the new version
+          # Update the Debian changelog
           export DEBFULLNAME="GitHub Actions"
           export DEBEMAIL="actions@github.com"
           dch --force-distribution -v "$NEW_VERSION" -D "unstable" "Automated build of version $NEW_VERSION"
 
-          # Output the new version number for later steps
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
       # 5) Build the package
@@ -92,16 +91,16 @@ jobs:
       - name: Upload Debian package
         uses: actions/upload-artifact@v3
         with:
-          # Incorporate the version (which includes the branch name) into the artifact name
+          # The artifact name includes the generated version (with the branch)
           name: wlanpi-usb-ethernet_${{ env.new_version }}
           path: build/*.deb
 
   slack-workflow-status:
+    # Example Slack notification step
     if: ${{ always() && (github.repository_owner == 'WLAN-Pi') && (! github.event.pull_request.head.repo.fork) }}
     name: Post Workflow Status to Slack
-    needs:
-      - build-deb
-    runs-on: 'ubuntu-22.04'
+    needs: [ build-deb ]
+    runs-on: ubuntu-22.04
     steps:
       - name: Slack Workflow Notification
         uses: Gamesight/slack-workflow-status@master
