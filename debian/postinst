@@ -34,6 +34,31 @@ mv "$TEMP_FILE" "$CONFIG_FILE"
 # Reload systemd configuration
 systemctl daemon-reload
 
+#
+# Update /etc/avahi/avahi-daemon.conf for USB Ethernet
+#
+AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
+if [ -f "$AVAHI_CONF" ]; then
+    echo "Updating $AVAHI_CONF for USB Ethernet"
+
+    # 1) Insert or update "allow-interfaces=usb0,usb1,wlan0,pan0"
+    if grep -q '^allow-interfaces=' "$AVAHI_CONF"; then
+        sed -i 's/^allow-interfaces=.*/allow-interfaces=usb0,usb1,wlan0,pan0/' "$AVAHI_CONF"
+    else
+        sed -i '/^\[server\]/a allow-interfaces=usb0,usb1,wlan0,pan0' "$AVAHI_CONF"
+    fi
+
+    # 2) Insert or update "publish-hinfo=no"
+    if grep -q '^publish-hinfo=' "$AVAHI_CONF"; then
+        sed -i 's/^publish-hinfo=.*/publish-hinfo=no/' "$AVAHI_CONF"
+    else
+        sed -i '/^\[server\]/a publish-hinfo=no' "$AVAHI_CONF"
+    fi
+
+else
+    echo "Warning: $AVAHI_CONF not found; unable to configure Avahi for USB Ethernet."
+fi
+
 # Detect if running in a chroot environment
 if systemd-detect-virt --chroot >/dev/null 2>&1; then
     echo "Running in a chroot environment. Only enabling services."
@@ -56,5 +81,9 @@ else
         echo "Error: usb-gadget.service not found at $SERVICE_FILE" >&2
         exit 1
     fi
-fi
 
+    # Optionally restart Avahi so changes take effect immediately
+    if systemctl is-enabled avahi-daemon >/dev/null 2>&1; then
+        systemctl restart avahi-daemon || true
+    fi
+fi
