@@ -7,7 +7,7 @@ Scope=link
 
 [Network]
 DHCPServer=yes
-LinkLocalAddressing=yes
+LinkLocalAddressing=no
 IPv6AcceptRA=no
 
 [DHCPServer]
