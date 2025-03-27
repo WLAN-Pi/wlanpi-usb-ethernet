@@ -10,9 +10,9 @@ exec > >(tee -a "$LOGFILE") 2>&1
 GADGET_DIR="/sys/kernel/config/usb_gadget/wlanpi"
 UDC_PATH="/sys/class/udc"
 USB_PRODUCT="WLAN Pi USB Ethernet"
-MANUFACTURER="Oscium"
-CONFIG_POWER="500"    		# Max power
-CONFIG_ATTRIBUTES="0x80"  	# Bus-powered
+MANUFACTURER="WLAN Pi"
+CONFIG_POWER="500"    # Max power in units of 2 mA (500 = 1 A)
+CONFIG_ATTRIBUTES="0x80"  # Bus-powered
 
 # Helper Functions
 cleanup_gadget() {
@@ -66,9 +66,6 @@ create_rndis_function() {
     mkdir -p "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis"
     echo "RNDIS" > "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis/compatible_id"
     echo "5162001" > "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis/sub_compatible_id"
-   #echo "0xEF" > "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis/bInterfaceClass"
-   #echo "0x04" >  "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis/bInterfaceSubClass"
-   #echo "0x01" >  "$GADGET_DIR/functions/rndis.usb1/os_desc/interface.rndis/bInterfaceProtocol"
     ln -s "$GADGET_DIR/functions/rndis.usb1" "$GADGET_DIR/configs/c.2/"
 }
 
@@ -97,13 +94,10 @@ cleanup_gadget
 modprobe libcomposite
 
 mkdir -p "$GADGET_DIR"
-echo "0x26ae" > "$GADGET_DIR/idVendor"    # Oscium
-echo "0x000E" > "$GADGET_DIR/idProduct"   # 
+echo "0x1d6b" > "$GADGET_DIR/idVendor"    # Linux Foundation
+echo "0x0104" > "$GADGET_DIR/idProduct"  # Multifunction Composite Gadget
 echo "0x0100" > "$GADGET_DIR/bcdDevice"
 echo "0x0200" > "$GADGET_DIR/bcdUSB"
-echo "0xEF" > "$GADGET_DIR/bDeviceClass"
-echo "0x02" > "$GADGET_DIR/bDeviceSubClass"
-echo "0x01" > "$GADGET_DIR/bDeviceProtocol"
 
 read MAC_DEVICE MAC_HOST <<< "$(generate_mac_addresses)"
 SERIAL=$(awk '/Serial/ {print substr($3,5)}' /proc/cpuinfo)
