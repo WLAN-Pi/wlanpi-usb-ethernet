@@ -94,8 +94,8 @@ cleanup_gadget
 modprobe libcomposite
 
 mkdir -p "$GADGET_DIR"
-echo "0x1d6b" > "$GADGET_DIR/idVendor"    # Linux Foundation
-echo "0x0104" > "$GADGET_DIR/idProduct"  # Multifunction Composite Gadget
+echo "0x1209" > "$GADGET_DIR/idVendor"    # pid.codes
+echo "0x2042" > "$GADGET_DIR/idProduct"  # WLAN Pi
 echo "0x0100" > "$GADGET_DIR/bcdDevice"
 echo "0x0200" > "$GADGET_DIR/bcdUSB"
 
