@@ -1,5 +1,22 @@
+wlanpi-usb-ethernet (1.2.0-1) bookworm; urgency=medium
+
+  * Added keep-alive mechanism to monitor usb0 and usb1, resetting the USB
+    gadget on connectivity loss to the host.
+  * Implemented dynamic host IP discovery using ARP table, replacing static
+    IP configuration.
+  * Added ARP table refresh via broadcast ping for reliable IP discovery.
+  * Enhanced logging to include discovered IPs and raw ARP output in
+    /var/log/usb-ethernet-gadget.log.
+  * Added net-tools dependency for ARP functionality.
+  * Updated README.md with troubleshooting steps for keep-alive and IP discovery.
+
+ -- Jerry Olla <jerryolla@gmail.com>  Sun, 22 Jun 2025 11:19:00 -0500
+
 wlanpi-usb-ethernet (1.1.1-1) bookworm; urgency=medium
+
   * Added support for Windows
+
+ -- Jerry Olla <jerryolla@gmail.com>  Fri, 22 Dec 2023 10:00:00 +0000
 
 wlanpi-usb-ethernet (1.0.0-1) bookworm; urgency=medium
 

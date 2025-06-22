@@ -1,12 +1,15 @@
 Source: wlanpi-usb-ethernet
-Section: utils
+Section: net
 Priority: optional
 Maintainer: Jerry Olla <jerryolla@gmail.com>
-Standards-Version: 4.6.0
+Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13)
 
 Package: wlanpi-usb-ethernet
 Architecture: all
-Depends: ${misc:Depends}
-Description: Configure Raspberry Pi USB gadget functionality
- This package sets up USB Ethernet gadget mode for WLAN Pi.
+Depends: ${misc:Depends}, iputils-ping, net-tools
+Description: USB Ethernet gadget with keep-alive for WLAN Pi
+ This package configures a USB Ethernet gadget on the WLAN Pi, providing
+ CDC ECM (usb0) and RNDIS (usb1) interfaces. It includes a keep-alive
+ mechanism to monitor connectivity and reset the gadget on host
+ disconnection, using ARP-based dynamic IP discovery.
