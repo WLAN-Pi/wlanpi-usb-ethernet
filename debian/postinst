@@ -6,7 +6,7 @@ TEMP_FILE="/tmp/config.txt"
 SERVICE_FILE="/etc/systemd/system/usb-ethernet-gadget.service"
 
 # Make usb-ethernet-gadget.sh executable
-chmod +x /usr/local/bin/usb-ethernet-gadget.sh
+chmod +x /usr/bin/usb-ethernet-gadget.sh
 
 # Comment out any existing otg_mode=1 entries
 sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
