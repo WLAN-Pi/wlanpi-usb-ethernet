@@ -1,9 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 CONFIG_FILE="/boot/firmware/config.txt"
 TEMP_FILE="/tmp/config.txt"
-SERVICE_FILE="/etc/systemd/system/usb-gadget.service"  # Corrected path
+SERVICE_FILE="/etc/systemd/system/usb-ethernet-gadget.service"
+
+# Make usb-ethernet-gadget.sh executable
+chmod +x /usr/local/bin/usb-ethernet-gadget.sh
 
 # Comment out any existing otg_mode=1 entries
 sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
@@ -34,27 +37,30 @@ mv "$TEMP_FILE" "$CONFIG_FILE"
 # Reload systemd configuration
 systemctl daemon-reload
 
-#
+# Stop and disable old usb-gadget.service if it exists
+if [ -f "/etc/systemd/system/usb-gadget.service" ]; then
+    systemctl stop usb-gadget.service || true
+    systemctl disable usb-gadget.service || true
+fi
+
 # Update /etc/avahi/avahi-daemon.conf for USB Ethernet
-#
 AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
 if [ -f "$AVAHI_CONF" ]; then
     echo "Updating $AVAHI_CONF for USB Ethernet"
 
-    # 1) Insert or update "allow-interfaces=usb0,usb1,wlan0,pan0"
+    # Insert or update "allow-interfaces=usb0,usb1,wlan0,pan0"
     if grep -q '^allow-interfaces=' "$AVAHI_CONF"; then
         sed -i 's/^allow-interfaces=.*/allow-interfaces=usb0,usb1,wlan0,pan0/' "$AVAHI_CONF"
     else
         sed -i '/^\[server\]/a allow-interfaces=usb0,usb1,wlan0,pan0' "$AVAHI_CONF"
     fi
 
-    # 2) Insert or update "publish-hinfo=no"
+    # Insert or update "publish-hinfo=no"
     if grep -q '^publish-hinfo=' "$AVAHI_CONF"; then
         sed -i 's/^publish-hinfo=.*/publish-hinfo=no/' "$AVAHI_CONF"
     else
         sed -i '/^\[server\]/a publish-hinfo=no' "$AVAHI_CONF"
     fi
-
 else
     echo "Warning: $AVAHI_CONF not found; unable to configure Avahi for USB Ethernet."
 fi
@@ -65,20 +71,20 @@ if systemd-detect-virt --chroot >/dev/null 2>&1; then
     # Enable services without starting them
     systemctl enable systemd-networkd || true
     if [ -f "$SERVICE_FILE" ]; then
-        systemctl enable usb-gadget.service || true
+        systemctl enable usb-ethernet-gadget.service || true
     else
-        echo "Error: usb-gadget.service not found at $SERVICE_FILE" >&2
+        echo "Error: usb-ethernet-gadget.service not found at $SERVICE_FILE" >&2
+        exit 1
     fi
 else
     # Enable and start services in a normal environment
     systemctl enable systemd-networkd
-    systemctl start systemd-networkd
-
+    systemctl start systemd-networkd || true
     if [ -f "$SERVICE_FILE" ]; then
-        systemctl enable usb-gadget.service
-        systemctl start usb-gadget.service
+        systemctl enable usb-ethernet-gadget.service
+        systemctl start usb-ethernet-gadget.service || true
     else
-        echo "Error: usb-gadget.service not found at $SERVICE_FILE" >&2
+        echo "Error: usb-ethernet-gadget.service not found at $SERVICE_FILE" >&2
         exit 1
     fi
 
@@ -87,3 +93,5 @@ else
         systemctl restart avahi-daemon || true
     fi
 fi
+
+exit 0
