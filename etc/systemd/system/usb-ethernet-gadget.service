@@ -5,7 +5,7 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/usb-ethernet-gadget.sh
+ExecStart=/usr/bin/usb-ethernet-gadget.sh
 Restart=always
 RestartSec=30
 StandardOutput=journal
