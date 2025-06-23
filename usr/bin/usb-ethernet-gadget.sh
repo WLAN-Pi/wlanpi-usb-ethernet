@@ -279,7 +279,6 @@ while true; do
                     log_message "Interface $iface is down but was not previously connected. Skipping reset."
                 fi
             else
-                local host_ip
                 host_ip=$(get_host_ip "$iface")
                 if [ -n "$host_ip" ] && [ "$host_ip" != "Address" ]; then
                     if ping -c "$PING_COUNT" -I "$iface" "$host_ip" &>/dev/null; then
