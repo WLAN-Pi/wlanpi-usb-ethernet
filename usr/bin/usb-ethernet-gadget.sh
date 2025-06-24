@@ -289,8 +289,8 @@ while true; do
                             log_message "Interface $iface was connected but no response from $host_ip. Triggering reset."
                             needs_reset=true
                         else
-                            log_message "Interface $iface is up but no response from $host_ip. Skipping reset."
-                            refresh_arp "$iface"
+                            log_message "Interface $iface is up but no response from $host_ip. Trigerring reset."
+                            needs_reset=true
                         fi
                     fi
                 else
