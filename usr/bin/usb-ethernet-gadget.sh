@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-INTERFACES=("usb0" "usb1") # USB Ethernet interfaces to monitor
+INTERFACES=("usb0") # USB Ethernet interfaces to monitor
 LOG_FILE="/var/log/usb-ethernet-gadget.log"
 STATE_FILE="/var/run/usb-ethernet-gadget.state"
 CHECK_INTERVAL=10          # Seconds between keep-alive checks
