@@ -252,7 +252,6 @@ reset_gadget() {
             log_message "Failed to bring $iface up or interface not found."
         fi
     done
-    log_message "USB Ethernet gadget reset successfully."
     return 0
 }
 
