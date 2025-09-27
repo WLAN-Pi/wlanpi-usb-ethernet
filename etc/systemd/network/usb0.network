@@ -1,16 +1,7 @@
 [Match]
 Name=usb0
 
-[Address]
-Address=10.42.0.1/24
-Scope=link
-
 [Network]
-DHCPServer=yes
+Address=169.254.42.1/24
 LinkLocalAddressing=no
 IPv6AcceptRA=no
-
-[DHCPServer]
-EmitRouter=no
-EmitDNS=no
-PoolSize=50

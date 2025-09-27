@@ -1,5 +1,6 @@
 etc/systemd/network/usb0.network etc/systemd/network/
 etc/systemd/network/usb1.network etc/systemd/network/
+etc/dnsmasq.d/10-usb-gadget.conf /etc/dnsmasq.d/
 etc/systemd/system/usb-ethernet-gadget.service etc/systemd/system/
 usr/bin/usb-ethernet-gadget.sh usr/bin/
 usr/bin/usb_update_address.sh usr/bin/
