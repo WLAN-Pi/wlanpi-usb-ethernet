@@ -5,6 +5,7 @@ INTERFACES=("usb0") # USB Ethernet interfaces to monitor
 LOG_FILE="/var/log/usb-ethernet-gadget.log"
 STATE_FILE="/var/run/usb-ethernet-gadget.state"
 CHECK_INTERVAL=10          # Seconds between keep-alive checks
+INIT_CHECK_INTERVAL=2      # Faster checks during initialization
 PING_COUNT=3               # Number of pings to send
 GADGET_DIR="/sys/kernel/config/usb_gadget/wlanpi"
 UDC_PATH="/sys/class/udc"
@@ -27,7 +28,7 @@ refresh_arp() {
     local broadcast
     broadcast=$(ip -4 addr show "$iface" | grep inet | awk '{print $2}' | cut -d/ -f1 | sed 's/\.[0-9]*$/.255/')
     if [ -n "$broadcast" ]; then
-        ping -c 1 -b -I "$iface" "$broadcast" >/dev/null 2>&1
+        ping -c 1 -W 1 -b -I "$iface" "$broadcast" >/dev/null 2>&1
         log_message "Sent broadcast ping to $broadcast on $iface to refresh ARP table."
     else
         log_message "Could not determine broadcast address for $iface."
@@ -39,7 +40,8 @@ discover_host_ip() {
     local iface="$1"
     # Query ARP table, exclude incomplete entries and header
     local ip
-    ip=$(arp -n -i "$iface" | grep -v incomplete | grep -v Address | awk '{print $1}' | head -n 1)
+    #ip=$(arp -n -i "$iface" | grep -v incomplete | grep -v Address | awk '{print $1}' | head -n 1)
+    ip=$(arp -n -i "$iface" | awk '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {print $1; exit}')
     if [ -n "$ip" ]; then
         log_message "Discovered host IP $ip on $iface."
         echo "$ip"
@@ -50,7 +52,8 @@ discover_host_ip() {
         # Try refreshing ARP table
         refresh_arp "$iface"
         sleep 1
-        ip=$(arp -n -i "$iface" | grep -v incomplete | grep -v Address | awk '{print $1}' | head -n 1)
+        #ip=$(arp -n -i "$iface" | grep -v incomplete | grep -v Address | awk '{print $1}' | head -n 1)
+        ip=$(arp -n -i "$iface" | awk '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {print $1; exit}')
         if [ -n "$ip" ]; then
             log_message "Discovered host IP $ip on $iface after ARP refresh."
             echo "$ip"
@@ -211,15 +214,25 @@ setup_gadget() {
     bind_gadget_to_udc || { log_message "Failed to bind gadget to UDC."; exit 1; }
 
     # Wait for interfaces to come up
-    sleep 5
     for iface in "${INTERFACES[@]}"; do
-        if ip link set "$iface" up 2>/dev/null; then
-            log_message "Brought $iface up."
-        else
-            log_message "Failed to bring $iface up or interface not found."
+        max_wait=10
+        waited=0
+        while [ $waited -lt $max_wait ]; do
+            if ip link show "$iface" >/dev/null 2>&1; then
+                if ip link set "$iface" up 2>/dev/null; then
+                    log_message "Brought $iface up after ${waited}s."
+                else
+                    log_message "Failed to bring $iface up or interface not found."
+                fi
+                break
+            fi
+            sleep 0.5
+            waited=$((waited + 1))
+        done
+        if [ $waited -ge $max_wait ]; then
+            log_message "Timeout waiting for $iface to appear."
         fi
     done
-    log_message "USB Ethernet gadget configured successfully."
 }
 
 reset_gadget() {
@@ -255,7 +268,10 @@ reset_gadget() {
     return 0
 }
 
-# Main Script
+###############
+# Main Script #
+###############
+
 # Perform initial setup
 setup_gadget
 
@@ -264,9 +280,86 @@ for iface in "${INTERFACES[@]}"; do
     update_state "$iface" "disconnected" ""
 done
 
-# Enter keep-alive monitoring loop
+for iface in "${INTERFACES[@]}"; do
+    # Wait for carrier and IP address
+    start_time=$(date +%s.%N)
+    log_message "Waiting for $iface to be ready for initial ARP refresh..."
+    max_wait=20  # 10 seconds max (20 * 0.5s)
+    waited=0
+    carrier_detected=false
+    ip_detected=false
+    while [ $waited -lt $max_wait ]; do
+        link_state=$(ip link show "$iface" 2>/dev/null)
+        addr_state=$(ip -4 addr show "$iface" 2>/dev/null)
+
+        if echo "$link_state" | grep -q "state UP"; then
+            if [ "$carrier_detected" = false ]; then
+                carrier_time=$(date +%s.%N)
+                carrier_elapsed=$(echo "$carrier_time - $start_time" | bc)
+                log_message "$iface carrier detected after ${carrier_elapsed}s"
+                carrier_detected=true
+            fi
+            if echo "$addr_state" | grep -q "inet "; then
+                if [ "$ip_detected" = false ]; then
+                    ip_time=$(date +%s.%N)
+                    ip_elapsed=$(echo "$ip_time - $start_time" | bc)
+                    ip_addr=$(echo "$addr_state" | grep "inet " | awk '{print $2}')
+                    log_message "$iface IP address assigned after ${ip_elapsed}s: $ip_addr"
+                    ip_detected=true
+                fi
+
+                arp_start=$(date +%s.%N)
+                refresh_arp "$iface"
+                arp_end=$(date +%s.%N)
+                arp_elapsed=$(echo "$arp_end - $arp_start" | bc)
+                total_elapsed=$(echo "$arp_end - $start_time" | bc)
+                log_message "Initial ARP refresh for $iface completed in ${arp_elapsed}s (total wait: ${total_elapsed}s)"
+                break
+            else
+                if [ $((waited % 4)) -eq 0 ]; then
+                    log_message "$iface waiting for IP... (waited: $((waited / 2))s, addr output: $(echo "$addr_state" | head -n 3))"
+                fi
+            fi
+        fi
+        sleep 0.5
+        waited=$((waited + 1))
+    done
+    if [ $waited -ge $max_wait ]; then
+        log_message "Timeout waiting for $iface (carrier: $carrier_detected, IP: $ip_detected)"
+    fi
+done
+
+log_message "Starting initial host discovery polling..."
+
+discovery_attempts=0
+max_discovery_attempts=10  # 5 seconds max (10 * 0.5s)
+
+while [ $discovery_attempts -lt $max_discovery_attempts ]; do
+    discovered=false
+    for iface in "${INTERFACES[@]}"; do
+        if ip link show "$iface" 2>/dev/null | grep -q "state UP"; then
+            host_ip=$(discover_host_ip "$iface")
+            if [ -n "$host_ip" ]; then
+                log_message "Host discovered on $iface during initial polling: $host_ip"
+                update_state "$iface" "connected" "$host_ip"
+                discovered=true
+            fi
+        fi
+    done
+
+    if [ "$discovered" = true ]; then
+        break
+    fi
+
+    sleep 0.5
+    discovery_attempts=$((discovery_attempts + 1))
+done
+
 log_message "Starting USB Ethernet keep-alive monitoring for ${INTERFACES[*]}."
+
+# Enter keep-alive monitoring loop
 while true; do
+    # loop_start=$(date +%s.%N)
     needs_reset=false
     for iface in "${INTERFACES[@]}"; do
         if ip link show "$iface" >/dev/null 2>&1; then
@@ -278,26 +371,45 @@ while true; do
                     log_message "Interface $iface is down but was not previously connected. Skipping reset."
                 fi
             else
+                host_ip_start=$(date +%s.%N)
                 host_ip=$(get_host_ip "$iface")
-                if [ -n "$host_ip" ] && [ "$host_ip" != "Address" ]; then
-                    if ping -c "$PING_COUNT" -I "$iface" "$host_ip" &>/dev/null; then
-                        log_message "Interface $iface is up and connected to $host_ip."
-                        update_state "$iface" "connected" "$host_ip"
-                    else
-                        if was_connected "$iface"; then
-                            log_message "Interface $iface was connected but no response from $host_ip. Triggering reset."
-                            needs_reset=true
-                        else
-                            log_message "Interface $iface is up but no response from $host_ip. Trigerring reset."
-                            needs_reset=true
-                        fi
+                host_ip_end=$(date +%s.%N)
+                host_ip_elapsed=$(echo "$host_ip_end - $host_ip_start" | bc)
+                if [ -z "$host_ip" ] || [ "$host_ip" = "Address" ]; then
+                    # If no IP found and not previously connected, try ARP refresh immediately
+                    if ! was_connected "$iface"; then
+                        arp_refresh_start=$(date +%s.%N)
+                        refresh_arp "$iface"
+                        sleep 1
+                        host_ip=$(get_host_ip "$iface")
+                        arp_refresh_end=$(date +%s.%N)
+                        arp_refresh_elapsed=$(echo "$arp_refresh_end - $arp_refresh_start" | bc)
+                        log_message "ARP refresh attempt took ${arp_refresh_elapsed}s, result: $host_ip"
                     fi
-                else
+
                     if was_connected "$iface"; then
                         log_message "Interface $iface was connected but no valid host IP found. Triggering reset."
                         needs_reset=true
                     else
                         log_message "Interface $iface is up but no valid host IP found. Skipping reset."
+                    fi
+                    continue
+                # else
+                #     log_message "Host IP lookup took ${host_ip_elapsed}s"
+                fi
+
+                ping_start=$(date +%s.%N)
+                if ping -c "$PING_COUNT" -I "$iface" "$host_ip" &>/dev/null; then
+                    ping_end=$(date +%s.%N)
+                    ping_elapsed=$(echo "$ping_end - $ping_start" | bc)
+                    log_message "Interface $iface is up and connected to $host_ip (ping took ${ping_elapsed}s)."
+                    update_state "$iface" "connected" "$host_ip"
+                else
+                    if was_connected "$iface"; then
+                        log_message "Interface $iface was connected but no response from $host_ip. Triggering reset."
+                        needs_reset=true
+                    else
+                        log_message "Interface $iface is up but no response from $host_ip. Skipping reset."
                     fi
                 fi
             fi
@@ -322,5 +434,13 @@ while true; do
         fi
     fi
 
-    sleep "$CHECK_INTERVAL"
+    if grep -q ":connected:" "$STATE_FILE" 2>/dev/null; then
+        sleep "$CHECK_INTERVAL"
+    else
+        sleep "$INIT_CHECK_INTERVAL"
+    fi
+
+    # loop_end=$(date +%s.%N)
+    # loop_elapsed=$(echo "$loop_end - $loop_start" | bc)
+    # log_message "Monitoring loop iteration took ${loop_elapsed}s"
 done

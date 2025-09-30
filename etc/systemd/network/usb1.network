@@ -2,6 +2,16 @@
 Name=usb1
 
 [Network]
-Address=169.254.42.1/24
+Address=198.18.42.1/24
+DHCPServer=yes
 LinkLocalAddressing=no
 IPv6AcceptRA=no
+
+[Link]
+RequiredForOnline=no
+
+[DHCPServer]
+PoolOffset=9
+PoolSize=11
+EmitDNS=no
+EmitRouter=no
