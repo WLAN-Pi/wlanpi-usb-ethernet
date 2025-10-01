@@ -391,7 +391,8 @@ while true; do
                         log_message "Interface $iface was connected but no valid host IP found. Triggering reset."
                         needs_reset=true
                     else
-                        log_message "Interface $iface is up but no valid host IP found. Skipping reset."
+                        log_message "Interface $iface is up but no valid host IP found. Triggering reset."
+                        needs_reset=true
                     fi
                     continue
                 # else
@@ -409,7 +410,8 @@ while true; do
                         log_message "Interface $iface was connected but no response from $host_ip. Triggering reset."
                         needs_reset=true
                     else
-                        log_message "Interface $iface is up but no response from $host_ip. Skipping reset."
+                        log_message "Interface $iface is up but no response from $host_ip. Triggering reset."
+                        needs_reset=true
                     fi
                 fi
             fi
