@@ -1,15 +1,16 @@
 [Unit]
-Description=USB Ethernet Gadget Setup and Keep-Alive Service
-After=local-fs.target systemd-modules-load.service
+Description=USB ethernet gadget setup and keep-alive service
+After=local-fs.target systemd-modules-load.service sys-kernel-config.mount
 Before=network-pre.target
 DefaultDependencies=no
-RequiresMountsFor=/var
+RequiresMountsFor=/var /sys/kernel/config
+ConditionPathExists=/usr/bin/usb-ethernet-gadget.sh
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/usb-ethernet-gadget.sh
 Restart=always
-RestartSec=30
+RestartSec=10
 StandardOutput=journal
 StandardError=journal
 

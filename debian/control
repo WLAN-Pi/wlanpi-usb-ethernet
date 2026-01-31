@@ -7,7 +7,7 @@ Build-Depends: debhelper-compat (= 13)
 
 Package: wlanpi-usb-ethernet
 Architecture: all
-Depends: ${misc:Depends}, iputils-ping, net-tools
+Depends: ${misc:Depends}, iputils-ping, iproute2, kmod
 Description: USB Ethernet gadget with keep-alive for WLAN Pi
  This package configures a USB Ethernet gadget on the WLAN Pi, providing
  CDC ECM (usb0) and RNDIS (usb1) interfaces. It includes a keep-alive

@@ -7,40 +7,40 @@ if [ -f "/boot/firmware/config.txt" ]; then
 elif [ -f "/boot/config.txt" ]; then
     CONFIG_FILE="/boot/config.txt"
 else
-    echo "Error: config.txt not found in /boot/firmware or /boot" >&2
-    exit 1
+    echo "Warning: config.txt not found in /boot/firmware or /boot, skipping dtoverlay configuration" >&2
+    CONFIG_FILE=""
 fi
-TEMP_FILE="/tmp/config.txt"
+
 SERVICE_FILE="/etc/systemd/system/usb-ethernet-gadget.service"
 
 # Make usb-ethernet-gadget.sh executable
 chmod +x /usr/bin/usb-ethernet-gadget.sh
 
-# Comment out any existing otg_mode=1 entries
-sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
+if [ -n "$CONFIG_FILE" ]; then
+    # Comment out any existing otg_mode=1 entries
+    sed -i 's/^otg_mode=1/# otg_mode=1/' "$CONFIG_FILE"
 
-# Process config.txt to ensure dtoverlay=dwc2 is in the [cm4] section
-awk '
-/^\[cm4\]/ {
-    print;
-    in_cm4 = 1;
-    next;
-}
-/^\[/ && in_cm4 {
-    in_cm4 = 0;
-    if (!found) print "dtoverlay=dwc2";
-}
-in_cm4 {
-    if ($0 ~ /dtoverlay=dwc2/) found = 1;
-    print;
-    next;
-}
-{ print }
-END {
-    if (in_cm4 && !found) print "dtoverlay=dwc2";
-}' "$CONFIG_FILE" > "$TEMP_FILE"
+    # Idempotent config.txt processing:
+    # 1. Check if [cm4] section exists
+    # 2. Check if dtoverlay=dwc2 already exists in [cm4] section
+    # 3. Only add if missing
 
-mv "$TEMP_FILE" "$CONFIG_FILE"
+    if grep -q '^\[cm4\]' "$CONFIG_FILE"; then
+        # [cm4] section exists - check if dtoverlay=dwc2 is already there
+        # Extract [cm4] section and check for dtoverlay=dwc2
+        if ! awk '/^\[cm4\]/,/^\[/' "$CONFIG_FILE" | grep -q '^dtoverlay=dwc2'; then
+            # dtoverlay=dwc2 not in [cm4] section - add it after [cm4] header
+            sed -i '/^\[cm4\]/a dtoverlay=dwc2' "$CONFIG_FILE"
+            echo "Added dtoverlay=dwc2 to existing [cm4] section"
+        else
+            echo "dtoverlay=dwc2 already present in [cm4] section"
+        fi
+    else
+        # No [cm4] section - add it at the end of the file
+        printf '\n[cm4]\ndtoverlay=dwc2\n' >> "$CONFIG_FILE"
+        echo "Added [cm4] section with dtoverlay=dwc2"
+    fi
+fi
 
 # Reload systemd configuration
 systemctl daemon-reload
