@@ -1,3 +1,4 @@
+etc/modprobe.d/wlanpi-usb-gadget.conf etc/modprobe.d/
 etc/systemd/network/usb0.network etc/systemd/network/
 etc/systemd/network/usb1.network etc/systemd/network/
 etc/systemd/system/usb-ethernet-gadget.service etc/systemd/system/
