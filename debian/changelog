@@ -1,3 +1,9 @@
+wlanpi-usb-ethernet (1.5.1) bookworm; urgency=medium
+
+  * Rebuild to publish packages for Debian trixie to packagecloud
+
+ -- Josh Schmelzle <josh@joshschmelzle.com>  Thu, 09 Jul 2026 23:03:04 -0400
+
 wlanpi-usb-ethernet (1.5.0) bookworm; urgency=medium
 
   * Add sleep/wake cycle detection using USB suspend flags
