@@ -51,23 +51,21 @@ if [ -f "/etc/systemd/system/usb-gadget.service" ]; then
     systemctl disable usb-gadget.service || true
 fi
 
-# Update /etc/avahi/avahi-daemon.conf for USB Ethernet
+# Update /etc/avahi/avahi-daemon.conf for USB Ethernet.
+# Additive only: if a whitelist exists, make sure the gadget interfaces
+# are on it without removing anything else (the image overlay manages
+# the full list, including eth0/wlan1). If no whitelist exists, avahi
+# already announces on all interfaces, so there is nothing to do.
+# This script must not touch unrelated settings such as publish-hinfo.
 AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
 if [ -f "$AVAHI_CONF" ]; then
-    echo "Updating $AVAHI_CONF for USB Ethernet"
-
-    # Insert or update "allow-interfaces=usb0,usb1,wlan0,pan0"
     if grep -q '^allow-interfaces=' "$AVAHI_CONF"; then
-        sed -i 's/^allow-interfaces=.*/allow-interfaces=usb0,usb1,wlan0,pan0/' "$AVAHI_CONF"
-    else
-        sed -i '/^\[server\]/a allow-interfaces=usb0,usb1,wlan0,pan0' "$AVAHI_CONF"
-    fi
-
-    # Insert or update "publish-hinfo=no"
-    if grep -q '^publish-hinfo=' "$AVAHI_CONF"; then
-        sed -i 's/^publish-hinfo=.*/publish-hinfo=no/' "$AVAHI_CONF"
-    else
-        sed -i '/^\[server\]/a publish-hinfo=no' "$AVAHI_CONF"
+        for iface in usb0 usb1; do
+            if ! grep '^allow-interfaces=' "$AVAHI_CONF" | grep -qw "$iface"; then
+                echo "Adding $iface to allow-interfaces in $AVAHI_CONF"
+                sed -i "s/^allow-interfaces=.*/&, $iface/" "$AVAHI_CONF"
+            fi
+        done
     fi
 else
     echo "Warning: $AVAHI_CONF not found; unable to configure Avahi for USB Ethernet."
