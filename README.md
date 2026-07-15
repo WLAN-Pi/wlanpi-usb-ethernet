@@ -1,6 +1,8 @@
 # wlanpi-usb-ethernet
 
-This package configures a USB Ethernet gadget on the WLAN Pi, providing CDC ECM (usb0) and RNDIS (usb1) interfaces for Ethernet-over-USB connectivity. It includes an integrated setup and keep-alive system to initialize the gadget and monitor connectivity, resetting when necessary.
+> **Scope: this package is specifically for the WLAN Pi Go.** It is installed by the Go (lite) image only. Other WLAN Pi devices and the full image do not use it.
+
+This package configures a USB Ethernet gadget on the WLAN Pi Go, providing CDC ECM (usb0) and RNDIS (usb1) interfaces for Ethernet-over-USB connectivity. It includes an integrated setup and keep-alive system to initialize the gadget and monitor connectivity, resetting when necessary.
 
 ## Intended Hosts
 
