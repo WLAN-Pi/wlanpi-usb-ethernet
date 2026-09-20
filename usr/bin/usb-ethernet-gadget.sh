@@ -172,6 +172,9 @@ HOST_IS_SLEEPING="false"
 # Tracks whether the gadget is currently bound to a UDC (main loop retries setup if unbound)
 GADGET_BOUND="false"
 
+# Tracks whether the host mode notice has been logged (avoid repeating every poll)
+HOST_MODE_LOGGED="false"
+
 
 # ~~~~~~~~~~~~~~~~~~~~~
 # GLOBAL STATE TRACKING
@@ -1112,6 +1115,19 @@ bind_gadget_to_udc() {
     fi
 }
 
+# Return 0 when the dwc2 controller is in host-only mode. In host mode dwc2
+# cannot provide a UDC, so reloading the module cannot help and it takes down
+# the host bus and any devices behind it.
+dwc2_host_mode() {
+    local dev dr_mode
+    dev=$(find /sys/bus/platform/drivers/dwc2 -maxdepth 1 -name '*.usb' 2>/dev/null | head -n 1)
+    if [[ -z "$dev" ]]; then
+        return 1
+    fi
+    dr_mode=$(tr -d '\000' < "$dev/of_node/dr_mode" 2>/dev/null)
+    [[ "$dr_mode" == "host" ]]
+}
+
 wait_for_udc() {
     local max_ticks="$1"
     local timing_message="$2"
@@ -1167,6 +1183,12 @@ setup_gadget() {
     # Wait for UDC to appear after dwc2 loads (max 5 seconds at boot)
     boot_timing_log "SETUP_GADGET" "Waiting for UDC to appear..."
     if ! wait_for_udc 50 "UDC appeared after"; then
+        if dwc2_host_mode; then
+            log_message "dwc2 is in host mode; no UDC can appear. Skipping dwc2 reload."
+            boot_timing_log "SETUP_GADGET" "dwc2 is in host mode, skipping dwc2 reload"
+            GADGET_BOUND="false"
+            return 1
+        fi
         log_message "Warning: Timeout waiting for UDC after loading dwc2. Attempting dwc2 reload..."
         boot_timing_log "SETUP_GADGET" "WARNING: Timeout waiting for UDC (5s), attempting dwc2 reload"
 
@@ -1275,6 +1297,15 @@ main_loop() {
 
     while true; do
         if [[ "$GADGET_BOUND" != "true" ]]; then
+            if dwc2_host_mode; then
+                if [[ "$HOST_MODE_LOGGED" != "true" ]]; then
+                    log_message "dwc2 is in host mode; USB gadget not applicable. Waiting for mode change."
+                    HOST_MODE_LOGGED="true"
+                fi
+                sleep 60
+                continue
+            fi
+            HOST_MODE_LOGGED="false"
             log_message "Gadget not bound to UDC. Retrying setup in 10s..."
             sleep 10
             if setup_gadget; then
