@@ -1,3 +1,13 @@
+wlanpi-usb-ethernet (1.5.3) bookworm; urgency=medium
+
+  * Add a postrm to undo the host-side changes on removal: stop and disable
+    the gadget service, remove the dtoverlay=dwc2 line postinst added to
+    config.txt, and drop usb0/usb1 from avahi allow-interfaces. Without this,
+    removing the package left dwc2 blacklisted on disk and the config.txt edit
+    in place, which broke USB host on devices that no longer need the gadget.
+
+ -- Josh Schmelzle <josh@joshschmelzle.com>  Mon, 21 Sep 2026 17:19:42 -0400
+
 wlanpi-usb-ethernet (1.5.2) bookworm; urgency=medium
 
   * postinst: make avahi allow-interfaces edits additive instead of
