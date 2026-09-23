@@ -1,3 +1,13 @@
+wlanpi-usb-ethernet (1.5.4) bookworm; urgency=medium
+
+  * Skip the dwc2 module reload when the controller is in host mode
+    (dr_mode=host). No UDC can appear in host mode, so the reload never
+    helped and it took down the USB host bus and any devices behind it.
+    The service now logs once and waits for a mode change instead of
+    retrying every 10 seconds.
+
+ -- Josh Schmelzle <josh@joshschmelzle.com>  Wed, 23 Sep 2026 19:40:42 -0400
+
 wlanpi-usb-ethernet (1.5.3) bookworm; urgency=medium
 
   * Add a postrm to undo the host-side changes on removal: stop and disable
