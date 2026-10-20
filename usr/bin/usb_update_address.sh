@@ -4,7 +4,7 @@
 #   sudo ./usb_update_address.sh <new_cidr>
 #
 # Example:
-#   sudo ./usb_update_address.sh 198.18.43.1/24
+#   sudo ./usb_update_address.sh 198.18.44.1/24
 #
 # This script updates the Address line in usb0.network and usb1.network
 #  then restarts.
@@ -15,7 +15,7 @@ set -e
 if [ -z "$1" ]; then
   echo "Usage: $0 <new_cidr>"
   echo "Examples:"
-  echo " - $0 198.18.43.1/24"
+  echo " - $0 198.18.44.1/24"
   exit 1
 fi
 
@@ -58,6 +58,11 @@ fi
 # Validate RFC 5735 address range (198.18.0.0/15)
 if [[ "${octets[0]}" != "198" || ("${octets[1]}" != "18" && "${octets[1]}" != "19") ]]; then
     echo "Error: CIDR must be in RFC 5735 range (198.18.0.0/15)"
+    exit 1
+fi
+
+if [[ "${octets[0]}.${octets[1]}.${octets[2]}" == "198.18.43" ]]; then
+    echo "Error: 198.18.43.0/24 is used by Bluetooth PAN (pan0); choose another /24"
     exit 1
 fi
 
